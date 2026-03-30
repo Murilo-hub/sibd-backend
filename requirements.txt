@@ -5,6 +5,7 @@ python-multipart>=0.0.9
 
 # ── Validação e settings ──────────────────────────────────────────
 pydantic>=2.8.0
+pydantic[email]>=2.8.0
 pydantic-settings>=2.4.0
 
 # ── Banco relacional ──────────────────────────────────────────────
