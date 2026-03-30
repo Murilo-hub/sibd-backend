@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/models/user.py
 Model SQLAlchemy para usuários do sistema.

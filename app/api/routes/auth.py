@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/api/routes/auth.py
 Endpoints de autenticação: registro, login, perfil e refresh de token.

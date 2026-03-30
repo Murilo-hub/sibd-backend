@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/core/security.py
 Utilitários de segurança: hashing de senha, criação e verificação de JWT.

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/services/auth_service.py
 Regras de negócio para autenticação: registro, login, busca de usuário.

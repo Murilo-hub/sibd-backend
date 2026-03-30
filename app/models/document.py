@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/models/document.py
 Model SQLAlchemy para documentos enviados e indexados.

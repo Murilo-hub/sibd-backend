@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/utils/file_utils.py
 Utilitários para manipulação de arquivos enviados.

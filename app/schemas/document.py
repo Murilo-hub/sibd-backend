@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/schemas/document.py
 Schemas Pydantic para documentos.

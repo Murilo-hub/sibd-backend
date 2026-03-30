@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/core/deps.py
 Dependências reutilizáveis do FastAPI (injeção de dependência).

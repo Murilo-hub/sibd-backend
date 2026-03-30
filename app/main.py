@@ -18,19 +18,18 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Executado na inicialização e encerramento da aplicação.
-    Inicializa banco relacional e coleção ChromaDB.
-    """
     setup_logging()
     logger.info("sibd_starting", env=settings.app_env, llm=settings.llm_provider)
 
     # Banco relacional
     await init_db()
 
-    # Banco vetorial
-    chroma = get_chroma_client()
-    get_or_create_collection(chroma)
+    # Banco vetorial (opcional — não trava se não estiver disponível)
+    try:
+        chroma = get_chroma_client()
+        get_or_create_collection(chroma)
+    except Exception as e:
+        logger.warning("chroma_init_skipped", error=str(e))
 
     logger.info("sibd_ready")
     yield
@@ -42,12 +41,11 @@ def create_app() -> FastAPI:
         title="SIBD — Sistema Inteligente de Busca de Documentos",
         description="API REST para busca semântica de documentos corporativos com RAG + LLMs.",
         version="0.1.0",
-        docs_url="/docs"     if settings.app_debug else None,
-        redoc_url="/redoc"   if settings.app_debug else None,
+        docs_url="/docs"  if settings.app_debug else None,
+        redoc_url="/redoc" if settings.app_debug else None,
         lifespan=lifespan,
     )
 
-    # ── CORS ─────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -56,10 +54,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Rotas ─────────────────────────────────────────────────────────────
     app.include_router(api_router)
 
-    # ── Health check ──────────────────────────────────────────────────────
     @app.get("/health", tags=["health"])
     async def health():
         return {

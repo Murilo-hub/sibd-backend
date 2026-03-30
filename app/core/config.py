@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/core/config.py
 Configurações centrais da aplicação via pydantic-settings.

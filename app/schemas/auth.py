@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/schemas/auth.py
 Schemas Pydantic para autenticação (request/response).

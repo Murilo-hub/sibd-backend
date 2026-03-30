@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/schemas/chat.py
 Schemas Pydantic para chat e histórico.

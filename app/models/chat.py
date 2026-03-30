@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/models/chat.py
 Models SQLAlchemy para sessões e mensagens de chat (RF09 — histórico).

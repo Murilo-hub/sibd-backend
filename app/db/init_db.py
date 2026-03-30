@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 app/db/init_db.py
 Inicializa as tabelas do banco relacional na primeira execução.
