@@ -20,5 +20,5 @@ RUN mkdir -p data/uploads data/processed data/vector_store data/logs
 
 EXPOSE 8000
 
-# Railway injeta $PORT automaticamente; fallback para 8000 em dev
+# Usa shell form (não array) para o bash expandir $PORT corretamente
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
