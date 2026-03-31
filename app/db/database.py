@@ -3,7 +3,6 @@ from __future__ import annotations
 app/db/database.py
 Engine assíncrono do SQLAlchemy + fábrica de sessões.
 """
-from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
