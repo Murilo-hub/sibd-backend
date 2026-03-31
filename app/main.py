@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import api_router
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from app.db.init_db import init_db
+from app.db.init_db import init_db_background
 from app.db.vector_store import get_chroma_client, get_or_create_collection
 
 logger = get_logger(__name__)
