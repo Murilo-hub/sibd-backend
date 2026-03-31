@@ -21,10 +21,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("sibd_starting", env=settings.app_env, llm=settings.llm_provider)
 
-    # Banco relacional
-    await init_db()
+    await init_db_background()
 
-    # Banco vetorial (opcional — não trava se não estiver disponível)
     try:
         chroma = get_chroma_client()
         get_or_create_collection(chroma)
@@ -38,10 +36,9 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="SIBD — Sistema Inteligente de Busca de Documentos",
-        description="API REST para busca semântica de documentos corporativos com RAG + LLMs.",
+        title="SIBD",
         version="0.1.0",
-        docs_url="/docs"  if settings.app_debug else None,
+        docs_url="/docs" if settings.app_debug else None,
         redoc_url="/redoc" if settings.app_debug else None,
         lifespan=lifespan,
     )
