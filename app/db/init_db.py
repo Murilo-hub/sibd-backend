@@ -1,8 +1,7 @@
 from __future__ import annotations
 """
 app/db/init_db.py
-Inicializa as tabelas do banco relacional na primeira execução.
-Tenta reconectar automaticamente se o banco ainda não estiver pronto.
+Inicializa as tabelas em background — nunca derruba o servidor.
 """
 import asyncio
 from app.db.database import Base, engine
@@ -11,19 +10,19 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def init_db() -> None:
-    """Cria todas as tabelas, com retry automático para esperar o PostgreSQL."""
+async def _create_tables() -> None:
     from app.models import user, document, chat  # noqa: F401
-
-    for attempt in range(10):
+    for attempt in range(20):
         try:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("database_tables_created")
             return
         except Exception as e:
-            wait = 3 * (attempt + 1)
-            logger.info("database_not_ready", attempt=attempt + 1, wait=wait, error=str(e))
-            await asyncio.sleep(wait)
+            logger.info("db_retry", attempt=attempt + 1, error=str(e)[:60])
+            await asyncio.sleep(3)
+    logger.info("db_gave_up")
 
-    raise RuntimeError("Não foi possível conectar ao PostgreSQL após 10 tentativas.")
+
+async def init_db_background() -> None:
+    asyncio.create_task(_create_tables())
