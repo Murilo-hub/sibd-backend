@@ -10,16 +10,10 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
-# Adiciona SSL se a variável POSTGRES_SSL estiver habilitada ou se for production
-def _build_db_url() -> str:
-    url = settings.async_database_url
-    if "ssl" not in url:
-        url += "?ssl=require"
-    return url
 
 engine = create_async_engine(
-    _build_db_url(),
-    echo=settings.app_debug,
+    settings.async_database_url,
+    echo=False,
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
@@ -33,8 +27,10 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:

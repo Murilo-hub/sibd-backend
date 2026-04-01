@@ -39,8 +39,6 @@ class Settings(BaseSettings):
 
     @property
     def async_database_url(self) -> str:
-        # Railway fornece DATABASE_URL com prefixo postgresql://
-        # SQLAlchemy async precisa de postgresql+asyncpg://
         if self.database_url:
             url = self.database_url
             if url.startswith("postgresql://"):
@@ -48,6 +46,7 @@ class Settings(BaseSettings):
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
             return url
+        # Usando variáveis separadas — Railway interno não precisa de SSL
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
