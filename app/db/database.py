@@ -1,7 +1,7 @@
 from __future__ import annotations
 """
 app/db/database.py
-Engine assíncrono do SQLAlchemy + fábrica de sessões.
+PostgreSQL
 """
 from collections.abc import AsyncGenerator
 
