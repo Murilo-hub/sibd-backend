@@ -45,12 +45,14 @@ class Settings(BaseSettings):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            # Garante SSL para Supabase
+            if "sslmode" not in url:
+                url += "?ssl=true"
             return url
-        # Usando variáveis separadas — Railway interno não precisa de SSL
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+    )
 
     # ── LLM ───────────────────────────────────────────────────────
     llm_provider: Literal["openai", "ollama"] = "openai"
