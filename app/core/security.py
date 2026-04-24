@@ -1,34 +1,27 @@
 from __future__ import annotations
 """
 app/core/security.py
-Utilitários de segurança: hashing de senha, criação e verificação de JWT.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+from jose import jwt
 
 from app.core.config import settings
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12,
-)
 
-
-# ── Senha ─────────────────────────────────────────────────────────────────────
+# ── Senha ─────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-# ── JWT ───────────────────────────────────────────────────────────────────────
+# ── JWT ───────────────────────────────────────────────────────────
 
 def create_access_token(subject: Any, expires_delta: timedelta | None = None) -> str:
     expire = datetime.now(timezone.utc) + (
@@ -45,20 +38,4 @@ def create_refresh_token(subject: Any) -> str:
 
 
 def decode_token(token: str) -> dict:
-    """
-    Decodifica e valida um JWT.
-    Lança JWTError se inválido ou expirado.
-    """
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-
-def decode_access_token(token: str) -> dict:
-    payload = decode_token(token)
-    if payload.get("type") != "access":
-        raise JWTError("Token type inválido")
-    return payload
-
-def decode_refresh_token(token: str) -> dict:
-    payload = decode_token(token)
-    if payload.get("type") != "refresh":
-        raise JWTError("Token type inválido")
-    return payload
