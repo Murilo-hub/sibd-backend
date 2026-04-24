@@ -49,13 +49,26 @@ async def register_user(db: AsyncSession, data: RegisterRequest) -> UserResponse
 
 async def login_user(db: AsyncSession, data: LoginRequest) -> TokenResponse:
     user = await get_user_by_email(db, data.email)
+    logger.info("login_attempt", email=data.email, user_found=user is not None)
 
-    # Sempre verifica o hash, mesmo se usuário não existe
-    dummy_hash = "$2b$12$dummy.hash.to.prevent.timing.attack"
+    dummy_hash = "$2b$12$dummyhashfordummypurposesonly1234"
     password_ok = verify_password(data.password, user.hashed_password if user else dummy_hash)
+    logger.info("password_check", ok=password_ok)
 
     if not user or not password_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha inválidos.",
         )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Conta desativada.",
+        )
+
+    access_token  = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    logger.info("tokens_created", user_id=user.id)
+
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
