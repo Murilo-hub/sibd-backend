@@ -54,6 +54,10 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
     )
 
+    # ── Supabase ──────────────────────────────────────────────────────
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+
     # ── LLM ───────────────────────────────────────────────────────
     llm_provider: Literal["openai", "ollama"] = "openai"
     openai_api_key: str = ""
