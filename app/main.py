@@ -18,9 +18,8 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
-    logger.info("sibd_starting", env=settings.app_env, llm=settings.llm_provider)
+    logger.info("sibd_starting", env=settings.app_env, llm=settings.groq_model)
 
-    # Banco relacional
     await init_db()
 
     logger.info("sibd_ready")
@@ -52,8 +51,8 @@ def create_app() -> FastAPI:
     async def health():
         return {
             "status": "ok",
-            "env": settings.app_env,
-            "llm_provider": settings.llm_provider,
+            "env":   settings.app_env,
+            "model": settings.groq_model,
         }
 
     return app
