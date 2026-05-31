@@ -46,16 +46,21 @@ class Settings(BaseSettings):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-            # Remove ssl=true e sslmode inválidos, garante sslmode=require
-            url = url.replace("?ssl=true", "").replace("&ssl=true", "")
-            if "sslmode" not in url:
-                sep = "&" if "?" in url else "?"
-                url += f"{sep}sslmode=require"
+            # Remove qualquer parâmetro SSL da URL — SSL é configurado via connect_args no engine
+            import re
+            url = re.sub(r'[?&]ssl(mode)?=[^&]*', '', url)
+            url = re.sub(r'\?$', '', url)
             return url
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def db_is_external(self) -> bool:
+        """Retorna True se o banco não é localhost (precisa de SSL)."""
+        url = self.database_url or self.postgres_host
+        return "localhost" not in url and "127.0.0.1" not in url
 
     # ── Supabase Storage ──────────────────────────────────────────────────────
     supabase_url:         str = ""
