@@ -16,7 +16,16 @@ from app.db.database import Base
 from app.models import user, document, chat  # noqa: F401 — registra os models
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+
+# O Alembic precisa da URL síncrona (psycopg2), não da assíncrona (asyncpg).
+# Derivamos a URL síncrona a partir da URL assíncrona gerada pelo settings.
+_async_url = settings.async_database_url
+_sync_url  = (
+    _async_url
+    .replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    .replace("?ssl=true", "?sslmode=require")   # psycopg2 usa sslmode=require
+)
+config.set_main_option("sqlalchemy.url", _sync_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
