@@ -5,20 +5,23 @@ app/core/security.py
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import bcrypt
+from passlib.context import CryptContext
 from jose import jwt
 
 from app.core.config import settings
+
+# Passlib gerencia o bcrypt de forma mais robusta que o bcrypt direto
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ── Senha ─────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    return pwd_context.verify(plain, hashed)
 
 
 # ── JWT ───────────────────────────────────────────────────────────
