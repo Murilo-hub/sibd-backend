@@ -1,6 +1,7 @@
 """
 app/db/vector_store.py
-Operações de embedding usando pgvector no PostgreSQL (Supabase).
+Operações de embedding usando pgvector no PostgreSQL.
+Cohere embed-multilingual-v3.0 → 1024 dimensões.
 """
 from __future__ import annotations
 import json
@@ -21,7 +22,7 @@ async def ensure_vector_table(session: AsyncSession) -> None:
             id          TEXT PRIMARY KEY,
             document_id TEXT NOT NULL,
             content     TEXT NOT NULL,
-            embedding   vector(1536),
+            embedding   vector(1024),
             metadata    JSONB
         )
     """))
@@ -36,10 +37,7 @@ async def add_chunks(
     embeddings:  list[list[float]],
     metadatas:   list[dict],
 ) -> None:
-    """
-    Insere ou atualiza chunks vetoriais no pgvector.
-    Cada chunk recebe um ID composto: <document_id>_<índice>.
-    """
+    """Insere ou atualiza chunks vetoriais no pgvector."""
     for i, (text_content, embedding, metadata) in enumerate(zip(texts, embeddings, metadatas)):
         chunk_id = f"{document_id}_{i}"
         await session.execute(text("""
@@ -60,43 +58,28 @@ async def add_chunks(
     logger.info("pgvector_chunks_added", document_id=document_id, count=len(texts))
 
 
-# Mantém o nome antigo como alias para não quebrar outras partes do código
-async def add_documents(
-    session:    AsyncSession,
-    ids:        list[str],
-    embeddings: list[list[float]],
-    documents:  list[str],
-    metadatas:  list[dict],
-) -> None:
-    for i, doc_id in enumerate(ids):
-        await session.execute(text("""
-            INSERT INTO document_chunks (id, document_id, content, embedding, metadata)
-            VALUES (:id, :document_id, :content, :embedding, :metadata)
-            ON CONFLICT (id) DO UPDATE
-            SET content   = EXCLUDED.content,
-                embedding = EXCLUDED.embedding,
-                metadata  = EXCLUDED.metadata
-        """), {
-            "id":          doc_id,
-            "document_id": metadatas[i].get("document_id", ""),
-            "content":     documents[i],
-            "embedding":   str(embeddings[i]),
-            "metadata":    json.dumps(metadatas[i]),
-        })
-    await session.commit()
-    logger.info("pgvector_docs_added", count=len(ids))
-
-
-async def query_collection(
+async def search_similar_chunks(
     session:         AsyncSession,
     query_embedding: list[float],
-    n_results:       int = 5,
+    top_k:           int = 5,
     owner_id:        Optional[int] = None,
+    document_ids:    Optional[list[int]] = None,
 ) -> list[dict]:
-    where = "WHERE (metadata->>'owner_id')::int = :owner_id" if owner_id is not None else ""
-    params: dict = {"embedding": str(query_embedding), "n": n_results}
+    """Busca os chunks mais similares à query no pgvector."""
+    conditions = []
+    params: dict = {"embedding": str(query_embedding), "n": top_k}
+
     if owner_id is not None:
+        conditions.append("(metadata->>'owner_id')::int = :owner_id")
         params["owner_id"] = owner_id
+
+    if document_ids:
+        placeholders = ", ".join(f":doc_id_{i}" for i in range(len(document_ids)))
+        conditions.append(f"document_id IN ({placeholders})")
+        for i, doc_id in enumerate(document_ids):
+            params[f"doc_id_{i}"] = str(doc_id)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     result = await session.execute(text(f"""
         SELECT id, document_id, content, metadata,
@@ -106,6 +89,7 @@ async def query_collection(
         ORDER BY embedding <=> :embedding
         LIMIT :n
     """), params)
+
     rows = result.fetchall()
     logger.info("pgvector_query_done", results=len(rows))
     return [
