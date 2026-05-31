@@ -1,0 +1,68 @@
+services:
+  - type: web
+    name: sibd-backend
+    runtime: python
+    region: ohio          # mais próximo do Brasil
+    plan: free
+
+    rootDir: backend
+
+    buildCommand: pip install -r requirements.txt
+
+    # Roda as migrations antes de subir o servidor
+    preDeployCommand: alembic upgrade head
+
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    healthCheckPath: /health
+
+    envVars:
+      # ── Aplicação ──────────────────────────────────────────────
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_SECRET_KEY
+        generateValue: true
+
+      # ── JWT ────────────────────────────────────────────────────
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+
+      # ── Banco de dados (Render injeta DATABASE_URL automaticamente) ──
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sibd-db
+          property: connectionString
+
+      # ── CORS: URL do Netlify ────────────────────────────────────
+      # Substitua pela URL real do seu site no Netlify
+      - key: CORS_ORIGINS
+        value: https://sibd-app.netlify.app
+
+      # ── LLM / Embeddings ───────────────────────────────────────
+      # Adicione estas variáveis no painel do Render (não coloque chaves aqui)
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false       # preencher manualmente no painel
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+
+      # ── Supabase Storage ───────────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false       # preencher manualmente no painel
+      - key: SUPABASE_SERVICE_KEY
+        sync: false       # preencher manualmente no painel
+
+databases:
+  - name: sibd-db
+    databaseName: sibd
+    user: sibd_user
+    plan: free
