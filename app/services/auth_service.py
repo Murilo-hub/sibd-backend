@@ -26,7 +26,6 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
 
 
 async def register_user(db: AsyncSession, data: RegisterRequest) -> UserResponse:
-    # Verifica se e-mail já existe
     existing = await get_user_by_email(db, data.email)
     if existing:
         raise HTTPException(
@@ -40,7 +39,8 @@ async def register_user(db: AsyncSession, data: RegisterRequest) -> UserResponse
         hashed_password=hash_password(data.password),
     )
     db.add(user)
-    await db.flush()   # obtém o ID antes do commit
+    await db.flush()
+    await db.commit()       # garante que o usuário é persistido no banco
     await db.refresh(user)
 
     logger.info("user_registered", user_id=user.id, email=user.email)
@@ -51,11 +51,14 @@ async def login_user(db: AsyncSession, data: LoginRequest) -> TokenResponse:
     user = await get_user_by_email(db, data.email)
     logger.info("login_attempt", email=data.email, user_found=user is not None)
 
-    dummy_hash = "$2b$12$dummyhashfordummypurposesonly1234"
-    password_ok = verify_password(data.password, user.hashed_password if user else dummy_hash)
-    logger.info("password_check", ok=password_ok)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha inválidos.",
+        )
 
-    if not user or not password_ok:
+    if not verify_password(data.password, user.hashed_password):
+        logger.info("password_check", ok=False)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha inválidos.",
