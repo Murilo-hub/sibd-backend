@@ -1,12 +1,7 @@
 from __future__ import annotations
 """
 app/rag/extractor.py
-──────────────────────────────────────────────────────────────────────────────
-Extrai texto puro de arquivos PDF, DOCX e TXT.
-
-Cada função recebe o conteúdo bruto do arquivo (bytes) e retorna uma string
-com o texto extraído, pronto para ser dividido em chunks.
-──────────────────────────────────────────────────────────────────────────────
+Extrai texto puro de arquivos PDF, DOCX, TXT, XLSX e XLS.
 """
 
 import io
@@ -21,7 +16,7 @@ def extract_text(content: bytes, file_type: str) -> str:
 
     Args:
         content:   bytes do arquivo lido do storage
-        file_type: extensão sem ponto em minúsculo — 'pdf', 'docx', 'doc', 'txt'
+        file_type: extensão sem ponto em minúsculo — 'pdf', 'docx', 'txt', 'xlsx', 'xls'
 
     Returns:
         Texto extraído como string; vazio se nada foi encontrado.
@@ -29,13 +24,14 @@ def extract_text(content: bytes, file_type: str) -> str:
     extractors = {
         "pdf":  _extract_pdf,
         "docx": _extract_docx,
-        "doc":  _extract_docx,   # python-docx lê .doc moderno também
+        "doc":  _extract_docx,
         "txt":  _extract_txt,
+        "xlsx": _extract_excel,
+        "xls":  _extract_excel,
     }
 
     extractor = extractors.get(file_type.lower())
     if not extractor:
-        # tipo não suportado — loga e retorna vazio para não quebrar o pipeline
         logger.warning("extractor_unsupported_type", file_type=file_type)
         return ""
 
@@ -44,7 +40,6 @@ def extract_text(content: bytes, file_type: str) -> str:
         logger.info("extractor_success", file_type=file_type, chars=len(text))
         return text
     except Exception as exc:
-        # falha na extração não deve derrubar o servidor
         logger.error("extractor_failed", file_type=file_type, error=str(exc))
         return ""
 
@@ -52,47 +47,77 @@ def extract_text(content: bytes, file_type: str) -> str:
 # ── Extratores individuais ────────────────────────────────────────────────────
 
 def _extract_pdf(content: bytes) -> str:
-    """
-    Extrai texto de todas as páginas de um PDF usando pypdf.
-    Páginas sem texto (ex: scaneadas sem OCR) contribuem com string vazia.
-    """
-    from pypdf import PdfReader   # importação local evita custo se tipo não for PDF
+    from pypdf import PdfReader
 
-    reader = PdfReader(io.BytesIO(content))   # lê o PDF a partir dos bytes em memória
-
+    reader = PdfReader(io.BytesIO(content))
     pages_text = []
-    for page_num, page in enumerate(reader.pages):
-        page_text = page.extract_text() or ""     # extract_text retorna None se vazia
-        if page_text.strip():                     # ignora páginas completamente em branco
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        if page_text.strip():
             pages_text.append(page_text)
-
-    return "\n\n".join(pages_text)   # separa páginas com linha em branco dupla
+    return "\n\n".join(pages_text)
 
 
 def _extract_docx(content: bytes) -> str:
-    """
-    Extrai texto de arquivos DOCX/DOC usando python-docx.
-    Cada parágrafo não vazio é incluído separado por quebra de linha.
-    """
-    from docx import Document   # importação local — python-docx
+    from docx import Document
 
-    doc = Document(io.BytesIO(content))   # abre o documento a partir dos bytes
-
-    paragraphs = []
-    for paragraph in doc.paragraphs:
-        text = paragraph.text.strip()
-        if text:                   # ignora parágrafos vazios
-            paragraphs.append(text)
-
+    doc = Document(io.BytesIO(content))
+    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
     return "\n".join(paragraphs)
 
 
 def _extract_txt(content: bytes) -> str:
-    """
-    Decodifica arquivo TXT tentando UTF-8 primeiro; fallback para latin-1.
-    latin-1 aceita qualquer byte, então nunca vai falhar.
-    """
     try:
         return content.decode("utf-8")
     except UnicodeDecodeError:
-        return content.decode("latin-1")   # fallback seguro para arquivos legados
+        return content.decode("latin-1")
+
+
+def _extract_excel(content: bytes) -> str:
+    """
+    Extrai texto de planilhas Excel (.xlsx e .xls) usando openpyxl.
+
+    Cada aba é processada separadamente. As linhas são convertidas em texto
+    no formato "Coluna1: Valor1 | Coluna2: Valor2 ..." usando a primeira linha
+    como cabeçalho. Isso preserva o contexto das colunas para o RAG entender
+    o significado de cada valor.
+
+    Exemplo de saída para uma linha:
+        Produto: Caneta | Quantidade: 100 | Preço: 2.50 | Total: 250.00
+    """
+    import openpyxl
+
+    workbook = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    all_text = []
+
+    for sheet_name in workbook.sheetnames:
+        sheet = workbook[sheet_name]
+        rows  = list(sheet.iter_rows(values_only=True))
+
+        if not rows:
+            continue
+
+        # Primeira linha como cabeçalho — remove células vazias
+        headers = [str(h).strip() if h is not None else f"Coluna{i+1}"
+                   for i, h in enumerate(rows[0])]
+
+        sheet_lines = [f"[Aba: {sheet_name}]"]
+
+        for row in rows[1:]:
+            # Ignora linhas completamente vazias
+            if all(cell is None or str(cell).strip() == "" for cell in row):
+                continue
+
+            # Monta "Cabeçalho: Valor" para cada célula não vazia
+            parts = []
+            for header, cell in zip(headers, row):
+                if cell is not None and str(cell).strip() != "":
+                    parts.append(f"{header}: {cell}")
+
+            if parts:
+                sheet_lines.append(" | ".join(parts))
+
+        if len(sheet_lines) > 1:   # só adiciona se tiver dados além do cabeçalho
+            all_text.append("\n".join(sheet_lines))
+
+    return "\n\n".join(all_text)
