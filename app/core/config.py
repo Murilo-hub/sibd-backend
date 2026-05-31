@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     upload_dir:         str = "./data/uploads"
     processed_dir:      str = "./data/processed"
     max_upload_size_mb: int = 50
-    allowed_extensions: str = "pdf,doc,docx,txt"
+    allowed_extensions: str = "pdf,doc,docx,txt,xlsx,xls"
 
     @property
     def allowed_extensions_list(self) -> list[str]:
