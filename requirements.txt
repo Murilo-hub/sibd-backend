@@ -16,7 +16,7 @@ psycopg2-binary>=2.9.0        # driver síncrono (usado pelo Alembic)
 
 # ── Autenticação ──────────────────────────────────────────────────
 python-jose[cryptography]>=3.3.0
-bcrypt>=4.1.0                 # usado diretamente — passlib não suporta bcrypt 4.x
+bcrypt>=4.0.1                 # bcrypt puro — NÃO usar passlib (incompatível com bcrypt>=4)
 
 # ── Banco vetorial ────────────────────────────────────────────────
 pgvector>=0.3.0               # tipo vector para SQLAlchemy + PostgreSQL
@@ -30,7 +30,6 @@ cohere>=5.0.0                 # SDK oficial — embed-multilingual-v3.0
 # ── Processamento de documentos ───────────────────────────────────
 pypdf>=4.3.0                  # extração de texto de PDFs
 python-docx>=1.1.0            # extração de texto de arquivos DOCX/DOC
-openpyxl>=3.1.0               # extração de texto de planilhas Excel (XLSX/XLS)
 
 # ── Utilitários ───────────────────────────────────────────────────
 python-dotenv>=1.0.0
