@@ -16,8 +16,7 @@ psycopg2-binary>=2.9.0        # driver síncrono (usado pelo Alembic)
 
 # ── Autenticação ──────────────────────────────────────────────────
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-bcrypt>=4.1.0                 # versão corrigida — compatível com Python 3.14
+bcrypt>=4.1.0                 # usado diretamente — passlib não suporta bcrypt 4.x
 
 # ── Banco vetorial ────────────────────────────────────────────────
 pgvector>=0.3.0               # tipo vector para SQLAlchemy + PostgreSQL
