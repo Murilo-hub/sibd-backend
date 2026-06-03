@@ -1,36 +1,41 @@
 from __future__ import annotations
 """
 app/db/init_db.py
-Inicializa as tabelas em background — nunca derruba o servidor.
+──────────────────────────────────────────────────────────────────────────────
+Verifica a conexão com o banco no startup da aplicação.
+
+As tabelas NÃO são criadas aqui — são criadas pelo Alembic (migrate.py)
+antes do servidor subir. Isso é mais seguro e previsível em produção.
+
+No Render, o Start Command deve ser:
+  python migrate.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+──────────────────────────────────────────────────────────────────────────────
 """
+
 import asyncio
-from app.db.database import Base, engine, AsyncSessionLocal
-from app.db.vector_store import ensure_vector_table
+from sqlalchemy import text
+from app.db.database import AsyncSessionLocal
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def _create_tables() -> None:
-    from app.models import user, document, chat  # noqa: F401
-    for attempt in range(20):
+async def init_db() -> None:
+    """
+    Testa a conexão com o banco no startup.
+    Tenta 10 vezes com intervalo de 3s — útil quando o banco demora para acordar
+    (ex: Supabase free tier que hiberna após inatividade).
+    """
+    for attempt in range(10):
         try:
-            # Tabelas relacionais
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("database_tables_created")
-
-            # Tabela de embeddings (pgvector)
             async with AsyncSessionLocal() as session:
-                await ensure_vector_table(session)
-            logger.info("vector_table_created")
-
+                await session.execute(text("SELECT 1"))   # query mínima para testar conexão
+            logger.info("database_connected")
             return
         except Exception as e:
-            logger.info("db_retry", attempt=attempt + 1, error=str(e)[:60])
+            logger.warning("database_retry", attempt=attempt + 1, error=str(e)[:80])
             await asyncio.sleep(3)
-    logger.info("db_gave_up")
 
-
-async def init_db() -> None:
-    asyncio.create_task(_create_tables())
+    # Se chegou aqui, não conseguiu conectar — loga mas não derruba o servidor
+    # O Render vai reiniciar automaticamente se o health check falhar
+    logger.error("database_connection_failed")
